@@ -43,7 +43,9 @@ func (conf *FtpConfig) CreateClient(addr, username, password string) (err error)
 func (conf *FtpConfig) Upload(srcPath, dstPath string) error {
 	defer conf.quit()
 
-	if dstPath != "" {
+	dst, _ := filepath.Split(dstPath)
+
+	if dst != "" {
 		var dirs []string
 		if strings.Contains(dstPath, `\`) {
 			dirs = strings.Split(dstPath, `\`)
