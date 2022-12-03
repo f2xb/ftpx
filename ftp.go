@@ -44,6 +44,8 @@ func (conf *FtpConfig) Upload(srcPath, dstPath string) error {
 	defer conf.quit()
 
 	dst, _ := filepath.Split(dstPath)
+	dst = strings.Trim(dst, `\`)
+	dst = strings.Trim(dst, `/`)
 
 	if dst != "" {
 		var dirs []string
