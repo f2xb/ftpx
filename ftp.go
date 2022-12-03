@@ -47,14 +47,14 @@ func (conf *FtpConfig) Upload(srcPath, dstPath string) error {
 
 	if dst != "" {
 		var dirs []string
-		if strings.Contains(dstPath, `\`) {
-			dirs = strings.Split(dstPath, `\`)
+		if strings.Contains(dst, `\`) {
+			dirs = strings.Split(dst, `\`)
 		}
-		if strings.Contains(srcPath, `/`) {
-			dirs = strings.Split(srcPath, `/`)
+		if strings.Contains(dst, `/`) {
+			dirs = strings.Split(dst, `/`)
 		}
 		if len(dirs) == 0 {
-			dirs = append(dirs, dstPath)
+			dirs = append(dirs, dst)
 		}
 		for i, _ := range dirs {
 			baseDir := filepath.Join(dirs[:i+1]...)
