@@ -71,12 +71,23 @@ func (cliConf *SftpConfig) RunShell(shell string) (string, error) {
 }
 
 func (cliConf *SftpConfig) Upload(srcPath, dstPath string) error {
-	srcFile, _ := os.Open(srcPath)
-	dstFile, _ := cliConf.sftpClient.Create(dstPath)
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("open src file error: %s", err)
+	}
+	dstFile, err := cliConf.sftpClient.Create(dstPath)
+	if err != nil {
+		return fmt.Errorf("sftp create dst path error: %s", err)
+	}
 	defer func() {
-		_ = srcFile.Close()
-		_ = dstFile.Close()
+		if srcFile != nil {
+			_ = srcFile.Close()
+		}
+		if dstFile != nil {
+			_ = dstFile.Close()
+		}
 	}()
+
 	buf := make([]byte, 1024)
 	for {
 		n, err := srcFile.Read(buf)
@@ -90,7 +101,7 @@ func (cliConf *SftpConfig) Upload(srcPath, dstPath string) error {
 		_, _ = dstFile.Write(buf[:n])
 	}
 
-	_, err := cliConf.RunShell(fmt.Sprintf("ls %s", dstPath))
+	_, err = cliConf.RunShell(fmt.Sprintf("ls %s", dstPath))
 	return err
 }
 
