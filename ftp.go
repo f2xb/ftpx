@@ -40,32 +40,38 @@ func (conf *FtpConfig) CreateClient(addr, username, password string) (err error)
 	return nil
 }
 
-func (conf *FtpConfig) Upload(srcPath, dstPath string) error {
-	defer conf.quit()
-
+func (conf *FtpConfig) makeDir(dstPath string) error {
 	dst, _ := filepath.Split(dstPath)
 	dst = strings.Trim(dst, `\`)
 	dst = strings.Trim(dst, `/`)
 
-	if dst != "" {
-		var dirs []string
-		if strings.Contains(dst, `\`) {
-			dirs = strings.Split(dst, `\`)
-		}
-		if strings.Contains(dst, `/`) {
-			dirs = strings.Split(dst, `/`)
-		}
-		if len(dirs) == 0 {
-			dirs = append(dirs, dst)
-		}
-		for i, _ := range dirs {
-			baseDir := filepath.Join(dirs[:i+1]...)
-			if err := conf.conn.MakeDir(baseDir); err != nil {
-				if !strings.Contains(err.Error(), "already exists") {
-					return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
-				}
+	var dirs []string
+	if strings.Contains(dst, `\`) {
+		dirs = strings.Split(dst, `\`)
+	}
+	if strings.Contains(dst, `/`) {
+		dirs = strings.Split(dst, `/`)
+	}
+	if len(dirs) == 0 {
+		dirs = append(dirs, dst)
+	}
+	for i, _ := range dirs {
+		baseDir := filepath.Join(dirs[:i+1]...)
+		if err := conf.conn.MakeDir(baseDir); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
 			}
 		}
+	}
+
+	return nil
+}
+
+func (conf *FtpConfig) Upload(srcPath, dstPath string) error {
+	defer conf.quit()
+
+	if err := conf.makeDir(dstPath); err != nil {
+		return err
 	}
 
 	bts, err := os.Open(srcPath)

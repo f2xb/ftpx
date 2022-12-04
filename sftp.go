@@ -5,6 +5,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -21,18 +23,13 @@ type SftpConfig struct {
 	sftpClient *sftp.Client
 }
 
-func (cliConf *SftpConfig) CreateClient(addr, username, password string) error {
-	var (
-		sshClient  *ssh.Client
-		sftpClient *sftp.Client
-		err        error
-	)
-	cliConf.Addr = addr
-	cliConf.Username = username
-	cliConf.Password = password
+func (conf *SftpConfig) CreateClient(addr, username, password string) (err error) {
+	conf.Addr = addr
+	conf.Username = username
+	conf.Password = password
 
 	config := ssh.ClientConfig{
-		User: cliConf.Username,
+		User: conf.Username,
 		Auth: []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			return nil
@@ -40,45 +37,72 @@ func (cliConf *SftpConfig) CreateClient(addr, username, password string) error {
 		Timeout: 10 * time.Second,
 	}
 
-	if sshClient, err = ssh.Dial("tcp", addr, &config); err != nil {
+	if conf.sshClient, err = ssh.Dial("tcp", addr, &config); err != nil {
 		return fmt.Errorf("ssh dial error : %s", err)
 	}
-	cliConf.sshClient = sshClient
 
-	if sftpClient, err = sftp.NewClient(sshClient); err != nil {
+	if conf.sftpClient, err = sftp.NewClient(conf.sshClient); err != nil {
 		return fmt.Errorf("sftp new client error : %s", err)
 	}
-	cliConf.sftpClient = sftpClient
 	return nil
 }
 
-func (cliConf *SftpConfig) RunShell(shell string) (string, error) {
+func (conf *SftpConfig) makeDir(dstPath string) error {
+	dst, _ := filepath.Split(dstPath)
+	dst = strings.Trim(dst, `\`)
+	dst = strings.Trim(dst, `/`)
+
+	var dirs []string
+	if strings.Contains(dst, `\`) {
+		dirs = strings.Split(dst, `\`)
+	}
+	if strings.Contains(dst, `/`) {
+		dirs = strings.Split(dst, `/`)
+	}
+	if len(dirs) == 0 {
+		dirs = append(dirs, dst)
+	}
+	baseDir := filepath.Join(dirs...)
+	if err := conf.sftpClient.MkdirAll(baseDir); err != nil {
+		return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
+	}
+
+	return nil
+}
+
+func (conf *SftpConfig) RunShell(shell string) (string, error) {
 	var (
 		session *ssh.Session
 		err     error
 	)
 
-	if session, err = cliConf.sshClient.NewSession(); err != nil {
+	if session, err = conf.sshClient.NewSession(); err != nil {
 		return "", fmt.Errorf("ssh new session error : %s", err)
 	}
 
 	if output, err := session.CombinedOutput(shell); err != nil {
 		return "", fmt.Errorf("session combined output error : %s", err)
 	} else {
-		cliConf.LastResult = string(output)
+		conf.LastResult = string(output)
 	}
-	return cliConf.LastResult, nil
+	return conf.LastResult, nil
 }
 
-func (cliConf *SftpConfig) Upload(srcPath, dstPath string) error {
+func (conf *SftpConfig) Upload(srcPath, dstPath string) error {
+	if err := conf.makeDir(dstPath); err != nil {
+		return err
+	}
+
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
 		return fmt.Errorf("open src file error: %s", err)
 	}
-	dstFile, err := cliConf.sftpClient.Create(dstPath)
+
+	dstFile, err := conf.sftpClient.Create(dstPath)
 	if err != nil {
 		return fmt.Errorf("sftp create dst path error: %s", err)
 	}
+
 	defer func() {
 		if srcFile != nil {
 			_ = srcFile.Close()
@@ -98,15 +122,16 @@ func (cliConf *SftpConfig) Upload(srcPath, dstPath string) error {
 				break
 			}
 		}
-		_, _ = dstFile.Write(buf[:n])
+		if _, err = dstFile.Write(buf[:n]); err != nil {
+			return fmt.Errorf("write dest file error: %s", err)
+		}
 	}
 
-	_, err = cliConf.RunShell(fmt.Sprintf("ls %s", dstPath))
-	return err
+	return nil
 }
 
-func (cliConf *SftpConfig) Download(srcPath, dstPath string) error {
-	srcFile, _ := cliConf.sftpClient.Open(srcPath)
+func (conf *SftpConfig) Download(srcPath, dstPath string) error {
+	srcFile, _ := conf.sftpClient.Open(srcPath)
 	dstFile, _ := os.Create(dstPath)
 	defer func() {
 		_ = srcFile.Close()
