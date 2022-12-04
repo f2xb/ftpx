@@ -23,7 +23,11 @@ func checkPath(path string) ([]string, error) {
 
 	var dirs []string
 	if strings.Contains(dst, `/`) {
-		dirs = strings.Split(dst, `/`)
+		for _, str := range strings.Split(dst, `/`) {
+			if str != "" {
+				dirs = append(dirs, str)
+			}
+		}
 	}
 	if len(dirs) == 0 {
 		dirs = append(dirs, dst)
