@@ -51,6 +51,8 @@ func (conf *FtpConfig) makeDir(dstPath string) error {
 
 	for i, _ := range dirs {
 		baseDir := filepath.Join(dirs[:i+1]...)
+		baseDir = strings.ReplaceAll(baseDir, `\\`, `/`)
+		baseDir = strings.ReplaceAll(baseDir, `\`, `/`)
 		if err := conf.conn.MakeDir(baseDir); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return fmt.Errorf("make dir [%s] error: %s", baseDir, err)

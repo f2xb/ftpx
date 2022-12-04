@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -57,6 +58,8 @@ func (conf *SftpConfig) makeDir(dstPath string) error {
 
 	for i, _ := range dirs {
 		baseDir := filepath.Join(dirs[:i+1]...)
+		baseDir = strings.ReplaceAll(baseDir, `\\`, `/`)
+		baseDir = strings.ReplaceAll(baseDir, `\`, `/`)
 		if dir, err := conf.sftpClient.Stat(baseDir); err == nil {
 			if dir.IsDir() {
 				continue
