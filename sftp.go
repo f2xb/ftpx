@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -48,24 +47,14 @@ func (conf *SftpConfig) CreateClient(addr, username, password string) (err error
 }
 
 func (conf *SftpConfig) makeDir(dstPath string) error {
-	if dstPath == "" {
-		return fmt.Errorf("error: dir does not exist")
-	}
-
-	dst, _ := filepath.Split(dstPath)
-	dst = strings.Trim(dst, `\`)
-	dst = strings.Trim(dst, `/`)
-
-	var dirs []string
-	if strings.Contains(dst, `\`) {
-		dirs = strings.Split(dst, `\`)
-	}
-	if strings.Contains(dst, `/`) {
-		dirs = strings.Split(dst, `/`)
+	dirs, err := checkPath(dstPath)
+	if err != nil {
+		return err
 	}
 	if len(dirs) == 0 {
-		dirs = append(dirs, dst)
+		return nil
 	}
+
 	baseDir := filepath.Join(dirs...)
 	if err := conf.sftpClient.MkdirAll(baseDir); err != nil {
 		return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
