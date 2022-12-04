@@ -48,6 +48,10 @@ func (conf *SftpConfig) CreateClient(addr, username, password string) (err error
 }
 
 func (conf *SftpConfig) makeDir(dstPath string) error {
+	if dstPath == "" {
+		return fmt.Errorf("error: dir does not exist")
+	}
+
 	dst, _ := filepath.Split(dstPath)
 	dst = strings.Trim(dst, `\`)
 	dst = strings.Trim(dst, `/`)
