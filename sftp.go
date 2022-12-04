@@ -93,12 +93,12 @@ func (conf *SftpConfig) Upload(srcPath, dstPath string) error {
 
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
-		return fmt.Errorf("open src file error: %s", err)
+		return err
 	}
 
 	dstFile, err := conf.sftpClient.Create(dstPath)
 	if err != nil {
-		return fmt.Errorf("sftp create dst path error: %s", err)
+		return err
 	}
 
 	defer func() {
