@@ -55,9 +55,17 @@ func (conf *SftpConfig) makeDir(dstPath string) error {
 		return nil
 	}
 
-	baseDir := filepath.Join(dirs...)
-	if err := conf.sftpClient.MkdirAll(baseDir); err != nil {
-		return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
+	for i, _ := range dirs {
+		baseDir := filepath.Join(dirs[:i+1]...)
+		if dir, err := conf.sftpClient.Stat(baseDir); err == nil {
+			if dir.IsDir() {
+				continue
+			}
+			return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
+		}
+		if err = conf.sftpClient.Mkdir(baseDir); err != nil {
+			return fmt.Errorf("make dir [%s] error: %s", baseDir, err)
+		}
 	}
 
 	return nil
